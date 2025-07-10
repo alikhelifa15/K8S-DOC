@@ -9,7 +9,7 @@
 
 FitConnect est une plateforme web complète dédiée au coaching fitness personnalisé, déployée sur Google Kubernetes Engine (GKE) avec toutes les bonnes pratiques de production.
 
-![FitConnect Preview](images/preview.png)
+![FitConnect Preview](https://i.postimg.cc/sgDwQdxk/preview.png)
 
 ## 🎯 Présentation du Projet
 
@@ -299,8 +299,8 @@ Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de 
 
 ## 📞 Support
 
-- **Documentation** : [docs.fitnessconnect.fr](https://docs.fitnessconnect.fr)
-- **Issues** : [GitHub Issues](https://github.com/username/fitconnect/issues)
+- **Documentation** : [docs.fitnessconnect.fr](https://docs.page/alikhelifa15/K8S-DOC)
+- **Issues** : [GitHub Issues](https://gitlab.com/Ali1999/projet-annuel)
 - **Email** : support@fitnessconnect.fr
 
 ---
