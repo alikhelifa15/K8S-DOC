@@ -1,0 +1,370 @@
+# Pipeline CI/CD FitConnect - Version Actuelle 🔄
+
+Pipeline GitLab CI simplifié pour automatiser les builds et déploiements sur Google Kubernetes Engine.
+
+## 🎯 Vue d'Ensemble du Pipeline
+
+### Architecture CI/CD Actuelle
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   🔨 BUILD  │───▶│  🧪 TEST   │───▶│ 🚀 DEPLOY  │
+│             │    │             │    │             │
+│ Frontend    │    │ Unit Tests  │    │ K8s Deploy  │
+│ API Build   │    │ Frontend    │    │ All        │
+│ Docker      │    │ API Tests   │    │ Services   │
+│ Push GCR    │    │ PostgreSQL  │    │ Production │
+└─────────────┘    └─────────────┘    └─────────────┘
+```
+
+### Stages Actuels
+
+| Stage | Composants | Runner | Branche |
+|-------|------------|--------|---------|
+| **🔨 Build** | Frontend + API | ilyes-runner | feature-deploy-ilyes |
+| **🧪 Test** | Frontend + API | ilyes-runner | main |
+| **🚀 Deploy** | Production K8s | ilyes-runner | feature-deploy-ilyes |
+
+## 📋 Configuration GitLab CI
+
+### Variables d'Environnement
+
+```yaml
+variables:
+  DOCKER_DRIVER: overlay2
+  GCP_PROJECT_ID: "k8s-frist-test"
+  GKE_CLUSTER_NAME: "react-app-cluster"
+  GKE_ZONE: "europe-west1-b"
+  AR_LOCATION: "europe-west1"
+  AR_REPO: "annual-project-repo"
+  NAMESPACE: "annual-project"
+```
+
+### Stages Configuration
+
+```yaml
+stages:
+  - build
+  - test
+  - deploy
+```
+
+## 🔨 Stage: Build
+
+### Build Frontend
+
+```yaml
+build-frontend:
+  stage: build
+  image: google/cloud-sdk:latest
+  variables:
+    DOCKER_HOST: unix:///var/run/docker.sock
+    DOCKER_TLS_CERTDIR: ""  
+  before_script:
+    - apt-get update && apt-get install -y docker.io
+    - echo $GCP_SERVICE_KEY | base64 -d > gcp-key.json
+    - gcloud auth activate-service-account --key-file gcp-key.json
+    - gcloud config set project $GCP_PROJECT_ID
+    - gcloud auth configure-docker ${AR_LOCATION}-docker.pkg.dev
+  script:
+    - cd client
+    - IMAGE_URL="${AR_LOCATION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/frontend:${CI_COMMIT_SHA}"
+    - docker build -t $IMAGE_URL .
+    - docker push $IMAGE_URL
+    - LATEST_URL="${AR_LOCATION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/frontend:latest"
+    - docker tag $IMAGE_URL $LATEST_URL
+    - docker push $LATEST_URL
+  tags:
+    - ilyes-runner  
+  only:
+    - feature-deploy-ilyes
+```
+
+### Build API
+
+```yaml
+build-api:
+  stage: build
+  image: google/cloud-sdk:latest
+  variables:
+    DOCKER_HOST: unix:///var/run/docker.sock
+    DOCKER_TLS_CERTDIR: ""
+  before_script:
+    - apt-get update && apt-get install -y docker.io
+    - echo $GCP_SERVICE_KEY | base64 -d > gcp-key.json
+    - gcloud auth activate-service-account --key-file gcp-key.json
+    - gcloud config set project $GCP_PROJECT_ID
+    - gcloud auth configure-docker ${AR_LOCATION}-docker.pkg.dev
+  script:
+    - cd server
+    - IMAGE_URL="${AR_LOCATION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/api:${CI_COMMIT_SHA}"
+    - docker build -t $IMAGE_URL .
+    - docker push $IMAGE_URL
+    - LATEST_URL="${AR_LOCATION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/api:latest"
+    - docker tag $IMAGE_URL $LATEST_URL
+    - docker push $LATEST_URL
+  tags:
+    - ilyes-runner  
+  only:
+    - feature-deploy-ilyes
+```
+
+## 🧪 Stage: Test
+
+### Tests Frontend
+
+```yaml
+test-frontend:
+  stage: test
+  image: node:18-alpine
+  cache:
+    paths:
+      - client/node_modules/
+  before_script:
+    - cd client
+  script:
+    - npm ci
+    - npm run test
+  tags:
+    - ilyes-runner  
+  only:
+    - main
+```
+
+### Tests API
+
+```yaml
+test-api:
+  stage: test
+  image: node:18-alpine
+  services:
+    - postgres:14
+  variables:
+    POSTGRES_DB: test_db
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: postgres
+    DATABASE_HOST: postgres
+    DATABASE_PORT: 5432
+    DATABASE_USER: postgres
+    DATABASE_PASSWORD: postgres
+    DATABASE_NAME: test_db
+  cache:
+    paths:
+      - server/node_modules/
+  before_script:
+    - cd server
+  script:
+    - npm ci
+    - npm run test
+  tags:
+    - ilyes-runner  
+  only:
+    - main
+```
+
+## 🚀 Stage: Deploy
+
+### Déploiement Production
+
+```yaml
+deploy:
+  stage: deploy
+  image: google/cloud-sdk:alpine
+  before_script:
+    - gcloud components install kubectl --quiet
+    - echo $GCP_SERVICE_KEY | base64 -d > gcp-key.json
+    - gcloud auth activate-service-account --key-file gcp-key.json
+    - gcloud config set project $GCP_PROJECT_ID
+    - gcloud container clusters get-credentials $GKE_CLUSTER_NAME --zone $GKE_ZONE
+  script:
+    # Nettoyage des ressources obsolètes
+    - kubectl delete ingress keycloak-ingress -n annual-project || true
+    
+    # Application des ressources de base
+    - kubectl apply -f k8s/namespace.yaml
+    - kubectl apply -f k8s/network-policy/
+
+    # 🔐 Configuration des certificats HTTPS
+    - echo "🔐 Applying ManagedCertificate fitnessconnect-cert..."
+    - kubectl apply -f k8s/ingress/fitnessconnect-cert.yaml
+
+    # 🔍 Vérification du certificat
+    - echo "🔍 Verifying ManagedCertificate fitnessconnect-cert status..."
+    - kubectl describe managedcertificate fitnessconnect-cert -n $NAMESPACE || echo "⚠️ Certificat peut prendre quelques minutes"
+
+    # Configuration Ingress
+    - kubectl apply -f k8s/ingress/
+
+    # 🗄️ Déploiement PostgreSQL
+    - echo "Deploying PostgreSQL..."
+    - kubectl apply -f k8s/postgres/
+    - kubectl wait --for=condition=available --timeout=300s deployment/postgres -n $NAMESPACE
+    
+    # 🔑 Déploiement Keycloak
+    - echo "Deploying Keycloak..."
+    - kubectl apply -f k8s/keycloak/keycloak-secret.yaml
+    - kubectl apply -f k8s/keycloak/keycloak-service.yaml
+    
+    # Configuration du thème Keycloak
+    - echo "📂 Listing theme folder contents:"
+    - ls -R k8s/keycloak/themes/mytheme
+    - echo "📦 Creating Keycloak theme ConfigMap..."
+    - kubectl create configmap keycloak-theme --from-file=k8s/keycloak/themes/mytheme --namespace=annual-project --dry-run=client -o yaml | kubectl apply -f -
+    - kubectl apply -f k8s/keycloak/keycloak-all.yaml
+
+    # 📊 Services de monitoring
+    - echo "Deploying Adminer..."
+    - kubectl apply -f k8s/adminer/
+    - echo "Deploying Uptime Kuma..."
+    - kubectl apply -f k8s/uptime-kuma/
+
+    # 🔄 Mise à jour des images applicatives
+    - FRONTEND_IMAGE="${AR_LOCATION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/frontend:${CI_COMMIT_SHA}"
+    - API_IMAGE="${AR_LOCATION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/api:${CI_COMMIT_SHA}"
+    - sed -i "s|image europe-west1-docker.pkg.dev/.*/frontend:.*|image ${FRONTEND_IMAGE}|g" k8s/frontend/frontend-all.yaml
+    - sed -i "s|image europe-west1-docker.pkg.dev/.*/api:.*|image $API_IMAGE|g" k8s/api/api-all.yaml
+
+    # ⚙️ Déploiement API
+    - echo "Deploying API..."
+    - kubectl apply -f k8s/api/
+    - kubectl wait --for=condition=available --timeout=300s deployment/api -n $NAMESPACE
+
+    # 🖥️ Déploiement Frontend
+    - echo "Deploying Frontend..."
+    - kubectl apply -f k8s/frontend/
+    - kubectl wait --for=condition=available --timeout=300s deployment/frontend -n $NAMESPACE
+
+    # ⏳ Attendre Keycloak
+    - echo "Waiting for Keycloak to be ready..."
+    - kubectl wait --for=condition=available --timeout=600s deployment/keycloak -n $NAMESPACE || echo "Keycloak may take longer to start"
+  tags:
+    - ilyes-runner
+  only:
+    - feature-deploy-ilyes
+```
+
+## 🔧 Configuration Actuelle
+
+### Runner Configuration
+
+- **Runner utilisé** : `ilyes-runner`
+- **Type** : Runner personnalisé avec Docker socket
+- **Configuration Docker** : Socket Unix direct (`unix:///var/run/docker.sock`)
+
+### Stratégie de Branche
+
+| Opération | Branche | Déclenchement |
+|-----------|---------|---------------|
+| **Build** | `feature-deploy-ilyes` | Push automatique |
+| **Test** | `main` | Push automatique |
+| **Deploy** | `feature-deploy-ilyes` | Push automatique |
+
+### Images Docker
+
+```
+Format des tags:
+- SHA commit : {AR_LOCATION}-docker.pkg.dev/{PROJECT_ID}/{REPO}/{SERVICE}:{CI_COMMIT_SHA}
+- Latest : {AR_LOCATION}-docker.pkg.dev/{PROJECT_ID}/{REPO}/{SERVICE}:latest
+
+Exemples:
+- europe-west1-docker.pkg.dev/k8s-frist-test/annual-project-repo/frontend:abc123
+- europe-west1-docker.pkg.dev/k8s-frist-test/annual-project-repo/api:abc123
+```
+
+## 📦 Services Déployés
+
+### Services Principaux
+
+| Service | Type | Namespace | Description |
+|---------|------|-----------|-------------|
+| **Frontend** | React App | annual-project | Interface utilisateur |
+| **API** | Node.js | annual-project | Backend REST API |
+| **PostgreSQL** | Database | annual-project | Base de données principale |
+| **Keycloak** | Auth | annual-project | Authentification SSO |
+
+### Services Auxiliaires
+
+| Service | Type | Description |
+|---------|------|-------------|
+| **Adminer** | DB Admin | Interface d'administration PostgreSQL |
+| **Uptime Kuma** | Monitoring | Surveillance des services |
+
+## 🌐 Configuration Réseau
+
+### Ingress et Certificats
+
+```yaml
+# Certificat SSL managé par Google Cloud
+ManagedCertificate: fitnessconnect-cert
+
+# Ingress routing
+- Frontend: https://fitnessconnect.fr
+- API: https://api.fitnessconnect.fr  
+- Keycloak: https://login.fitnessconnect.fr
+- Adminer: https://adminer.fitnessconnect.fr
+- Uptime: https://uptimekuma.fitnessconnect.fr
+```
+
+### Network Policies
+
+```yaml
+# Sécurité réseau au niveau du namespace
+- Isolation du trafic inter-pods
+- Règles de communication définies
+- Protection contre les accès non autorisés
+```
+
+## 🔄 Flux de Déploiement
+
+### Ordre des Déploiements
+
+```
+1. 🧹 Nettoyage (ingress obsolètes)
+2. 📋 Namespace et policies
+3. 🔐 Certificats SSL
+4. 🌐 Configuration Ingress  
+5. 🗄️ PostgreSQL
+6. 🔑 Keycloak + thème custom
+7. 📊 Services monitoring
+8. 🔄 Mise à jour images
+9. ⚙️ Déploiement API
+10. 🖥️ Déploiement Frontend
+11. ⏳ Attente Keycloak ready
+```
+
+### Variables Injectées
+
+```bash
+# Images construites dynamiquement
+FRONTEND_IMAGE="${AR_LOCATION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/frontend:${CI_COMMIT_SHA}"
+API_IMAGE="${AR_LOCATION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/api:${CI_COMMIT_SHA}"
+
+# Replacement dans les manifests K8s
+sed -i "s|image europe-west1-docker.pkg.dev/.*/frontend:.*|image ${FRONTEND_IMAGE}|g" k8s/frontend/frontend-all.yaml
+sed -i "s|image europe-west1-docker.pkg.dev/.*/api:.*|image $API_IMAGE|g" k8s/api/api-all.yaml
+```
+
+## 🎯 Points Clés de la Configuration
+
+### Avantages
+
+✅ **Pipeline simple** : 3 stages clairs et efficaces  
+✅ **Runner dédié** : Performance garantie avec `ilyes-runner`  
+✅ **Images taggées** : SHA commit + latest pour traçabilité  
+✅ **Déploiement complet** : Tous les services en une fois  
+✅ **Certificats SSL** : HTTPS managé par Google Cloud  
+✅ **Monitoring intégré** : Uptime Kuma + Adminer  
+
+### Spécificités Techniques
+
+🔧 **Docker Socket** : Accès direct via Unix socket  
+🔧 **GCP Integration** : Authentification par service account  
+🔧 **K8s Manifests** : Modification dynamique des images  
+🔧 **Keycloak Theme** : ConfigMap depuis fichiers locaux  
+🔧 **Attente déploiements** : `kubectl wait` pour synchronisation  
+
+---
+
+> **⚡ Configuration Production** : Cette pipeline est optimisée pour votre environnement spécifique avec le runner `ilyes-runner` et déploie directement sur la branche `feature-deploy-ilyes`.
+
+> **🔒 Sécurisé** : Utilisation de service accounts GCP et secrets GitLab CI pour les credentials sensibles.

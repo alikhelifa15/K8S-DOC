@@ -1,0 +1,186 @@
+{
+  "name": "FitConnect - Documentation",
+  "description": "Plateforme fitness moderne avec architecture Kubernetes production-ready",
+  "logo": {
+    "light": "/images/logo.png",
+    "dark": "/images/logo-dark.png"
+  },
+  "favicon": {
+    "light": "images/icon.png",
+    "dark": "/images/icon.png"
+  },
+  "theme": {
+    "primaryColor": "#326CE5",
+    "accentColor": "#2E6BDF",
+    "backgroundColor": "#ffffff",
+    "textColor": "#1a202c"
+  },
+  "social": {
+    "website": "https://fitnessconnect.fr"
+  },
+  "footer": {
+    "text": "FitConnect © 2024 - Projet de Clusterisation Kubernetes",
+    "links": [
+      {
+        "text": "Application Live",
+        "href": "https://fitnessconnect.fr"
+      },
+      {
+        "text": "API Documentation",
+        "href": "https://api.fitnessconnect.fr/docs"
+      },
+      {
+        "text": "Monitoring",
+        "href": "https://uptimekuma.fitnessconnect.fr"
+      },
+      {
+        "text": "Kubernetes Docs",
+        "href": "https://kubernetes.io/docs/"
+      }
+    ]
+  },
+  "sidebar": [
+    {
+      "group": "🚀 Démarrage",
+      "pages": [
+        {
+          "title": "Vue d'ensemble",
+          "href": "/",
+          "icon": "home",
+          "description": "Introduction à FitConnect et architecture globale"
+        },
+        {
+          "title": "Prérequis",
+          "href": "/prerequis",
+          "icon": "check-circle",
+          "description": "Configuration GCP et outils nécessaires"
+        }
+      ]
+    },
+    {
+      "group": "🏗️ Architecture",
+      "pages": [
+        {
+          "title": "Architecture Globale",
+          "href": "/architecture",
+          "icon": "layers",
+          "description": "Diagrammes et composants du système"
+        }
+        
+      ]
+    },
+   
+
+   
+    {
+      "group": "🔄 CI/CD & Déploiement",
+      "pages": [
+        {
+          "title": "Pipeline GitLab CI",
+          "href": "/cicd",
+          "icon": "git-branch",
+          "description": "Intégration et déploiement continus"
+        }
+       
+      ]
+    },
+   
+    
+    
+    {
+      "group": "📚 Références & Guides",
+      "pages": [
+        {
+          "title": "Best Practices",
+          "href": "/best-practices",
+          "icon": "star",
+          "description": "Bonnes pratiques DevOps et Kubernetes"
+        },
+        {
+          "title": "API Reference",
+          "href": "/api-reference",
+          "icon": "book",
+          "description": "Documentation des endpoints"
+        },
+        {
+          "title": "Glossaire",
+          "href": "/glossary",
+          "icon": "book-open",
+          "description": "Définitions et termes techniques"
+        },
+        {
+          "title": "Changelog",
+          "href": "/changelog",
+          "icon": "clock",
+          "description": "Historique des versions"
+        },
+        {
+          "title": "Ressources Externes",
+          "href": "/resources",
+          "icon": "external-link",
+          "description": "Liens utiles et documentation"
+        }
+      ]
+    }
+  ],
+  "search": {
+    "enabled": true,
+    "placeholder": "Rechercher dans la documentation...",
+    "docsearch": {
+      "appId": "YOUR_ALGOLIA_APP_ID",
+      "apiKey": "YOUR_ALGOLIA_SEARCH_KEY",
+      "indexName": "fitconnect-docs"
+    }
+  },
+  "analytics": {
+    "gtag": "G-XXXXXXXXXX"
+  },
+  "seo": {
+    "title": "FitConnect - Documentation Technique",
+    "description": "Documentation complète de la plateforme FitConnect : architecture Kubernetes, déploiement, monitoring et bonnes pratiques DevOps.",
+    "keywords": ["kubernetes", "devops", "react", "nestjs", "keycloak", "postgresql", "docker", "gke", "cicd", "monitoring"],
+    "ogImage": "https://i.postimg.cc/og-fitconnect-docs.png",
+    "twitterCard": "summary_large_image"
+  },
+  "features": {
+    "darkMode": true,
+    "codeHighlighting": true,
+    "tableOfContents": true,
+    "editOnGitHub": {
+      "enabled": true,
+      "baseUrl": "https://gitlab.com/Ali1999/projet-annuel"
+    },
+    "feedback": {
+      "enabled": true,
+      "title": "Cette page vous a-t-elle été utile ?",
+      "positiveText": "Oui",
+      "negativeText": "Non"
+    },
+    "lastUpdated": true,
+    "contributors": true
+  },
+  "customization": {
+    "css": "/assets/custom.css",
+    "favicon": "/assets/favicon.ico",
+    "appleTouchIcon": "/assets/apple-touch-icon.png"
+  },
+  "redirects": [
+    {
+      "from": "/setup",
+      "to": "/quick-start"
+    },
+    {
+      "from": "/install",
+      "to": "/deployment"
+    },
+    {
+      "from": "/config",
+      "to": "/configuration"
+    }
+  ],
+  "navigation": {
+    "breadcrumbs": true,
+    "nextPrevious": true,
+    "githubEditLink": true
+  }
+}

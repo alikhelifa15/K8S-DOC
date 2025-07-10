@@ -1,0 +1,175 @@
+---
+title: Prérequis
+description: Configuration Google Cloud Platform et outils nécessaires pour déployer FitConnect
+---
+
+# Prérequis FitConnect 🛠️
+
+Configuration complète de l'environnement pour déployer FitConnect sur Google Kubernetes Engine.
+
+## 🎯 Vue d'Ensemble
+
+### Environnement de Production
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                  Google Cloud Platform                          │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │                GKE Cluster                              │    │
+│  │                                                         │    │
+│  │  • Project: k8s-frist-test                             │    │
+│  │  • Region: europe-west1-b                              │    │
+│  │  • Nodes: 3 x e2-standard-2                            │    │
+│  │  • Version: 1.28+                                      │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │              Artifact Registry                          │    │
+│  │                                                         │    │
+│  │  • Repository: annual-project-repo                     │    │
+│  │  • Region: europe-west1                                │    │
+│  │  • Images: frontend, api                               │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │               Cloud DNS                                 │    │
+│  │                                                         │    │
+│  │  • Domain: fitnessconnect.fr                           │    │
+│  │  • Managed Certificates                                │    │
+│  │  • Subdomains: api, login, admin, monitoring           │    │
+│  └─────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+
+
+## ☁️ Google Cloud Platform
+
+### Configuration du Projet GCP
+
+#### 1. Création du Projet
+
+```bash
+# Authentification
+gcloud auth login
+
+# Créer un nouveau projet (ou utiliser existant)
+gcloud projects create k8s-frist-test --name="FitConnect Project"
+
+# Sélectionner le projet
+gcloud config set project k8s-frist-test
+
+# Vérifier la configuration
+gcloud config list
+```
+
+#### 2. Activation des APIs
+
+```bash
+# APIs essentielles pour FitConnect
+gcloud services enable \
+    container.googleapis.com \
+    artifactregistry.googleapis.com \
+    compute.googleapis.com \
+    dns.googleapis.com \
+    servicenetworking.googleapis.com \
+    sqladmin.googleapis.com \
+    monitoring.googleapis.com \
+    logging.googleapis.com \
+    cloudresourcemanager.googleapis.com \
+    iam.googleapis.com
+
+# Vérifier les APIs activées
+gcloud services list --enabled
+```
+
+#### 3. Configuration IAM
+
+```bash
+# Créer un compte de service pour GitLab CI
+gcloud iam service-accounts create gitlab-ci \
+    --description="GitLab CI/CD Service Account" \
+    --display-name="GitLab CI"
+
+# Attribuer les rôles nécessaires
+gcloud projects add-iam-policy-binding k8s-frist-test \
+    --member="serviceAccount:gitlab-ci@k8s-frist-test.iam.gserviceaccount.com" \
+    --role="roles/container.admin"
+
+gcloud projects add-iam-policy-binding k8s-frist-test \
+    --member="serviceAccount:gitlab-ci@k8s-frist-test.iam.gserviceaccount.com" \
+    --role="roles/artifactregistry.admin"
+
+gcloud projects add-iam-policy-binding k8s-frist-test \
+    --member="serviceAccount:gitlab-ci@k8s-frist-test.iam.gserviceaccount.com" \
+    --role="roles/compute.admin"
+
+# Créer et télécharger la clé
+gcloud iam service-accounts keys create ~/gitlab-ci-key.json \
+    --iam-account=gitlab-ci@k8s-frist-test.iam.gserviceaccount.com
+```
+
+### Configuration Quotas et Limites
+
+```bash
+# Vérifier les quotas actuels
+gcloud compute project-info describe --format="table(quotas.metric,quotas.limit,quotas.usage)"
+
+# Quotas recommandés pour FitConnect:
+# • CPUs: 24 (pour 3 nodes e2-standard-2)
+# • Persistent Disk SSD: 500 GB
+# • In-use IP addresses: 10
+# • Forwarding rules: 5
+```
+
+
+## 📁 Structure de Projet
+
+### Arborescence Recommandée
+
+```
+fitconnect-project/
+├── README.md
+├── k8s/                           # Manifests Kubernetes
+│   ├── namespace/
+│   │   └── namespace.yaml
+│   ├── secrets/
+│   │   ├── postgres-secret.yaml
+│   │   ├── api-secret.yaml
+│   │   └── keycloak-secret.yaml
+│   ├── storage/
+│   │   ├── postgres-pvc.yaml
+│   │   └── uptime-kuma-pvc.yaml
+│   ├── postgres/
+│   │   └── postgres-all.yaml
+│   ├── api/
+│   │   └── api-all.yaml
+│   ├── frontend/
+│   │   └── frontend-all.yaml
+│   ├── keycloak/
+│   │   ├── keycloak-all.yaml
+│   │   ├── keycloak-secret.yaml
+│   │   └── keycloak-service.yaml
+│   ├── adminer/
+│   │   └── adminer-all.yaml
+│   ├── uptime-kuma/
+│   │   └── uptime-kuma-all.yaml
+│   ├── network-policy/
+│   │   └── network-policy.yaml
+│   └── ingress/
+│       ├── ingress.yaml
+│       └── fitnessconnect-cert.yaml
+├── client/                        # Frontend React
+│   ├── Dockerfile
+│   ├── package.json
+│   ├── src/
+│   └── ...
+├── server/                        # Backend NestJS
+│   ├── Dockerfile
+│   ├── package.json
+│   ├── src/
+│   └── ...
+└── .gitlab-ci.yml                # Pipeline CI/CD
+```
+
