@@ -174,30 +174,8 @@ SERVICES EXPOSÉS
 ```yaml
 Stages Automatisés:
 ┌─────────────────────────────────────┐
-│ 1. BUILD    │ Docker Images         │
-│ 2. TEST     │ Unit + Integration    │
+│ 1. TEST     │ Unit + Integration    │
+│ 2. BUILD    │ Docker Images         │
 │ 3. DEPLOY   │ GKE Production        │
 └─────────────────────────────────────┘
-```
-
-### Infrastructure as Code
-- **Kubernetes Manifests** : YAML déclaratifs
-- **Secrets Management** : Kubernetes Secrets + GCP
-- **Network Policies** : Sécurisation réseau inter-pods
-- **Persistent Volumes** : Stockage GKE pour PostgreSQL
-- **Ingress HTTPS** : Certificats SSL automatiques
-- **Monitoring** : Métriques et alertes intégrées
-
-## 📈 Métriques de Performance
-
-### Haute Disponibilité
-- **Uptime** : 99.9% (8 jours de production stable)
-- **Load Balancing** : Distribution automatique du trafic
-
-### Sécurité
-- **HTTPS Everywhere** : Chiffrement TLS sur tous les services
-- **Network Isolation** : Policies réseau restrictives  
-- **Secrets Management** : Données sensibles chiffrées
-- **Authentication** : SSO Keycloak avec sécurité renforcée
-
 ---
