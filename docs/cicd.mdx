@@ -1,42 +1,53 @@
-# Pipeline CI/CD FitConnect - Version Actuelle 🔄
+# 🚀 Pipeline CI/CD FitConnect - Documentation Officielle
 
-Pipeline GitLab CI simplifié pour automatiser les builds et déploiements sur Google Kubernetes Engine.
+Pipeline GitLab CI/CD moderne avec gestion des branches GitFlow et déploiement automatisé sur Google Kubernetes Engine.
 
 ## 🎯 Vue d'Ensemble du Pipeline
 
-### Architecture CI/CD Actuelle
+### Architecture CI/CD Nouvelle Version
 
 ```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   🔨 BUILD  │───▶│  🧪 TEST   │───▶│ 🚀 DEPLOY  │
-│             │    │             │    │             │
-│ Frontend    │    │ Unit Tests  │    │ K8s Deploy  │
-│ API Build   │    │ Frontend    │    │ All        │
-│ Docker      │    │ API Tests   │    │ Services   │
-│ Push GCR    │    │ PostgreSQL  │    │ Production │
-└─────────────┘    └─────────────┘    └─────────────┘
+Feature Branches / Develop          Main Branch
+┌─────────────────────────┐    ┌─────────────────────────┐
+│      🧪 TEST ONLY       │    │ 🏗️ BUILD + 🚀 DEPLOY   |
+│                         │    │                         │
+│ ✓ Frontend Unit Tests   │    │ ✓ Docker Build Frontend │
+│ ✓ API Unit Tests        │    │ ✓ Docker Build API      │
+│ ✓ PostgreSQL Tests      │    │ ✓ Push to Registry      │
+│                         │    │ ✓ Deploy to Production  │
+│                         │    │                         │
+└─────────────────────────┘    │                         │
+                               │                         │
+                               └─────────────────────────┘
 ```
 
-### Stages Actuels
+### Stratégie de Branche GitFlow
 
-| Stage | Composants | Runner | Branche |
-|-------|------------|--------|---------|
-| **🔨 Build** | Frontend + API | ilyes-runner | feature-deploy-ilyes |
-| **🧪 Test** | Frontend + API | ilyes-runner | main |
-| **🚀 Deploy** | Production K8s | ilyes-runner | feature-deploy-ilyes |
+| Type de Branche | Tests | Build | Deploy | Description |
+|------------------|-------|-------|--------|-------------|
+| **feature/** | ✅ | ❌ | ❌ | Tests automatiques uniquement |
+| **develop** | ✅ | ❌ | ❌ | Tests + intégration continue |
+| **main** | ❌ | ✅ | ✅ | Build + Deploy                  |
 
 ## 📋 Configuration GitLab CI
 
-### Variables d'Environnement
+### Variables d'Environnement Globales
 
 ```yaml
 variables:
+  # 🐳 Configuration Docker
   DOCKER_DRIVER: overlay2
+  
+  # ☁️ Configuration GCP
   GCP_PROJECT_ID: "k8s-frist-test"
   GKE_CLUSTER_NAME: "react-app-cluster"
   GKE_ZONE: "europe-west1-b"
+  
+  # 📦 Configuration Artifact Registry
   AR_LOCATION: "europe-west1"
   AR_REPO: "annual-project-repo"
+  
+  # 🏠 Configuration Kubernetes
   NAMESPACE: "annual-project"
 ```
 
@@ -44,78 +55,20 @@ variables:
 
 ```yaml
 stages:
-  - build
-  - test
-  - deploy
+  - 🧪 test      # Tests unitaires (feature/develop uniquement)
+  - 🏗️ build     # Construction des images Docker (main uniquement)
+  - 🚀 deploy    # Déploiement sur GKE (main uniquement)
 ```
 
-## 🔨 Stage: Build
-
-### Build Frontend
-
-```yaml
-build-frontend:
-  stage: build
-  image: google/cloud-sdk:latest
-  variables:
-    DOCKER_HOST: unix:///var/run/docker.sock
-    DOCKER_TLS_CERTDIR: ""  
-  before_script:
-    - apt-get update && apt-get install -y docker.io
-    - echo $GCP_SERVICE_KEY | base64 -d > gcp-key.json
-    - gcloud auth activate-service-account --key-file gcp-key.json
-    - gcloud config set project $GCP_PROJECT_ID
-    - gcloud auth configure-docker ${AR_LOCATION}-docker.pkg.dev
-  script:
-    - cd client
-    - IMAGE_URL="${AR_LOCATION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/frontend:${CI_COMMIT_SHA}"
-    - docker build -t $IMAGE_URL .
-    - docker push $IMAGE_URL
-    - LATEST_URL="${AR_LOCATION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/frontend:latest"
-    - docker tag $IMAGE_URL $LATEST_URL
-    - docker push $LATEST_URL
-  tags:
-    - ilyes-runner  
-  only:
-    - feature-deploy-ilyes
-```
-
-### Build API
-
-```yaml
-build-api:
-  stage: build
-  image: google/cloud-sdk:latest
-  variables:
-    DOCKER_HOST: unix:///var/run/docker.sock
-    DOCKER_TLS_CERTDIR: ""
-  before_script:
-    - apt-get update && apt-get install -y docker.io
-    - echo $GCP_SERVICE_KEY | base64 -d > gcp-key.json
-    - gcloud auth activate-service-account --key-file gcp-key.json
-    - gcloud config set project $GCP_PROJECT_ID
-    - gcloud auth configure-docker ${AR_LOCATION}-docker.pkg.dev
-  script:
-    - cd server
-    - IMAGE_URL="${AR_LOCATION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/api:${CI_COMMIT_SHA}"
-    - docker build -t $IMAGE_URL .
-    - docker push $IMAGE_URL
-    - LATEST_URL="${AR_LOCATION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/api:latest"
-    - docker tag $IMAGE_URL $LATEST_URL
-    - docker push $LATEST_URL
-  tags:
-    - ilyes-runner  
-  only:
-    - feature-deploy-ilyes
-```
-
-## 🧪 Stage: Test
+## 🧪 Stage: Tests
 
 ### Tests Frontend
 
+**Déclenchement** : Feature branches, develop, MR vers develop
+
 ```yaml
-test-frontend:
-  stage: test
+🧪 test-frontend:
+  stage: 🧪 test
   image: node:18-alpine
   cache:
     paths:
@@ -126,16 +79,20 @@ test-frontend:
     - npm ci
     - npm run test
   tags:
-    - ilyes-runner  
-  only:
-    - main
+    - ilyes-runner
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /^feature\/.*/
+    - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"
 ```
 
-### Tests API
+### Tests API avec PostgreSQL
+
+**Déclenchement** : Feature branches, develop, MR vers develop
 
 ```yaml
-test-api:
-  stage: test
+🧪 test-api:
+  stage: 🧪 test
   image: node:18-alpine
   services:
     - postgres:14
@@ -157,18 +114,89 @@ test-api:
     - npm ci
     - npm run test
   tags:
+    - ilyes-runner
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /^feature\/.*/
+    - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"
+```
+
+## 🏗️ Stage: Build
+
+### Build Frontend
+
+**Déclenchement** : Branche main uniquement
+
+```yaml
+🏗️ build-frontend:
+  stage: 🏗️ build
+  image: google/cloud-sdk:latest
+  variables:
+    DOCKER_HOST: unix:///var/run/docker.sock
+    DOCKER_TLS_CERTDIR: ""  
+  before_script:
+    - apt-get update && apt-get install -y docker.io
+    - echo $GCP_SERVICE_KEY | base64 -d > gcp-key.json
+    - gcloud auth activate-service-account --key-file gcp-key.json
+    - gcloud config set project $GCP_PROJECT_ID
+    - gcloud auth configure-docker ${AR_LOCATION}-docker.pkg.dev
+  script:
+    - cd client
+    - IMAGE_URL="${AR_LOCATION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/frontend:${CI_COMMIT_SHA}"
+    - LATEST_URL="${AR_LOCATION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/frontend:latest"
+    - docker build -t $IMAGE_URL .
+    - docker push $IMAGE_URL
+    - docker tag $IMAGE_URL $LATEST_URL
+    - docker push $LATEST_URL
+  tags:
     - ilyes-runner  
-  only:
-    - main
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"
+```
+
+### Build API
+
+**Déclenchement** : Branche main uniquement
+
+```yaml
+🏗️ build-api:
+  stage: 🏗️ build
+  image: google/cloud-sdk:latest
+  variables:
+    DOCKER_HOST: unix:///var/run/docker.sock
+    DOCKER_TLS_CERTDIR: ""
+  before_script:
+    - apt-get update && apt-get install -y docker.io
+    - echo $GCP_SERVICE_KEY | base64 -d > gcp-key.json
+    - gcloud auth activate-service-account --key-file gcp-key.json
+    - gcloud config set project $GCP_PROJECT_ID
+    - gcloud auth configure-docker ${AR_LOCATION}-docker.pkg.dev
+  script:
+    - cd server
+    - IMAGE_URL="${AR_LOCATION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/api:${CI_COMMIT_SHA}"
+    - LATEST_URL="${AR_LOCATION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/api:latest"
+    - docker build -t $IMAGE_URL .
+    - docker push $IMAGE_URL
+    - docker tag $IMAGE_URL $LATEST_URL
+    - docker push $LATEST_URL
+  tags:
+    - ilyes-runner  
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"
 ```
 
 ## 🚀 Stage: Deploy
 
-### Déploiement Production
+### Déploiement Production Complet
+
+**Déclenchement** : Branche main uniquement  
+**Dépendances** : Nécessite build-frontend ET build-api
 
 ```yaml
-deploy:
-  stage: deploy
+🚀 deploy:
+  stage: 🚀 deploy
   image: google/cloud-sdk:alpine
   before_script:
     - gcloud components install kubectl --quiet
@@ -177,194 +205,217 @@ deploy:
     - gcloud config set project $GCP_PROJECT_ID
     - gcloud container clusters get-credentials $GKE_CLUSTER_NAME --zone $GKE_ZONE
   script:
-    # Nettoyage des ressources obsolètes
+    # 🧹 Nettoyage des ressources obsolètes
     - kubectl delete ingress keycloak-ingress -n annual-project || true
     
-    # Application des ressources de base
+    # 🏗️ Infrastructure de base
     - kubectl apply -f k8s/namespace.yaml
     - kubectl apply -f k8s/network-policy/
 
-    # 🔐 Configuration des certificats HTTPS
-    - echo "🔐 Applying ManagedCertificate fitnessconnect-cert..."
+    # 🔐 Configuration HTTPS
     - kubectl apply -f k8s/ingress/fitnessconnect-cert.yaml
-
-    # 🔍 Vérification du certificat
-    - echo "🔍 Verifying ManagedCertificate fitnessconnect-cert status..."
-    - kubectl describe managedcertificate fitnessconnect-cert -n $NAMESPACE || echo "⚠️ Certificat peut prendre quelques minutes"
-
-    # Configuration Ingress
+    - kubectl describe managedcertificate fitnessconnect-cert -n $NAMESPACE || echo "⚠️ Certificat en cours de provisioning"
     - kubectl apply -f k8s/ingress/
 
-    # 🗄️ Déploiement PostgreSQL
-    - echo "Deploying PostgreSQL..."
+    # 🗄️ Base de données
     - kubectl apply -f k8s/postgres/
     - kubectl wait --for=condition=available --timeout=300s deployment/postgres -n $NAMESPACE
     
-    # 🔑 Déploiement Keycloak
-    - echo "Deploying Keycloak..."
+    # 🔑 Authentification Keycloak
     - kubectl apply -f k8s/keycloak/keycloak-secret.yaml
     - kubectl apply -f k8s/keycloak/keycloak-service.yaml
-    
-    # Configuration du thème Keycloak
-    - echo "📂 Listing theme folder contents:"
     - ls -R k8s/keycloak/themes/mytheme
-    - echo "📦 Creating Keycloak theme ConfigMap..."
     - kubectl create configmap keycloak-theme --from-file=k8s/keycloak/themes/mytheme --namespace=annual-project --dry-run=client -o yaml | kubectl apply -f -
     - kubectl apply -f k8s/keycloak/keycloak-all.yaml
 
-    # 📊 Services de monitoring
-    - echo "Deploying Adminer..."
+    # 🔧 Outils d'administration
     - kubectl apply -f k8s/adminer/
-    - echo "Deploying Uptime Kuma..."
     - kubectl apply -f k8s/uptime-kuma/
 
-    # 🔄 Mise à jour des images applicatives
+    # 🏷️ Mise à jour des images avec SHA commit
     - FRONTEND_IMAGE="${AR_LOCATION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/frontend:${CI_COMMIT_SHA}"
     - API_IMAGE="${AR_LOCATION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/api:${CI_COMMIT_SHA}"
     - sed -i "s|image europe-west1-docker.pkg.dev/.*/frontend:.*|image ${FRONTEND_IMAGE}|g" k8s/frontend/frontend-all.yaml
     - sed -i "s|image europe-west1-docker.pkg.dev/.*/api:.*|image $API_IMAGE|g" k8s/api/api-all.yaml
 
-    # ⚙️ Déploiement API
-    - echo "Deploying API..."
+    # 🚀 Déploiement des applications
     - kubectl apply -f k8s/api/
     - kubectl wait --for=condition=available --timeout=300s deployment/api -n $NAMESPACE
-
-    # 🖥️ Déploiement Frontend
-    - echo "Deploying Frontend..."
     - kubectl apply -f k8s/frontend/
     - kubectl wait --for=condition=available --timeout=300s deployment/frontend -n $NAMESPACE
 
-    # ⏳ Attendre Keycloak
-    - echo "Waiting for Keycloak to be ready..."
-    - kubectl wait --for=condition=available --timeout=600s deployment/keycloak -n $NAMESPACE || echo "Keycloak may take longer to start"
+    # ⏳ Finalisation Keycloak
+    - kubectl wait --for=condition=available --timeout=600s deployment/keycloak -n $NAMESPACE || echo "⚠️ Keycloak peut nécessiter plus de temps"
   tags:
     - ilyes-runner
-  only:
-    - feature-deploy-ilyes
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"
+  needs:
+    - job: 🏗️ build-frontend
+    - job: 🏗️ build-api
 ```
 
-## 🔧 Configuration Actuelle
+## 🔄 Workflow GitFlow
 
-### Runner Configuration
+### Développement Feature
 
-- **Runner utilisé** : `ilyes-runner`
-- **Type** : Runner personnalisé avec Docker socket
-- **Configuration Docker** : Socket Unix direct (`unix:///var/run/docker.sock`)
+```bash
+# 1. Créer une branche feature
+git checkout -b feature/nouvelle-fonctionnalite
 
-### Stratégie de Branche
+# 2. Développer et commiter
+git add .
+git commit -m "feat: nouvelle fonctionnalité"
 
-| Opération | Branche | Déclenchement |
-|-----------|---------|---------------|
-| **Build** | `feature-deploy-ilyes` | Push automatique |
-| **Test** | `main` | Push automatique |
-| **Deploy** | `feature-deploy-ilyes` | Push automatique |
-
-### Images Docker
-
+# 3. Push déclenche les tests automatiquement
+git push origin feature/nouvelle-fonctionnalite
+# → Pipeline: 🧪 Tests Frontend + API uniquement
 ```
-Format des tags:
-- SHA commit : {AR_LOCATION}-docker.pkg.dev/{PROJECT_ID}/{REPO}/{SERVICE}:{CI_COMMIT_SHA}
-- Latest : {AR_LOCATION}-docker.pkg.dev/{PROJECT_ID}/{REPO}/{SERVICE}:latest
 
-Exemples:
-- europe-west1-docker.pkg.dev/k8s-frist-test/annual-project-repo/frontend:abc123
-- europe-west1-docker.pkg.dev/k8s-frist-test/annual-project-repo/api:abc123
+### Intégration Develop
+
+```bash
+# 1. Merge Request vers develop
+# → Pipeline: 🧪 Tests Frontend + API
+
+# 2. Après merge dans develop
+git checkout develop
+git pull origin develop
+# → Pipeline: 🧪 Tests Frontend + API
+```
+
+### Release Production
+
+```bash
+# 1. Merge Request develop → main
+# → Pipeline: 🏗️ Build + 🚀 Deploy (pas de tests)
+
+# 2. Après merge dans main
+git checkout main
+git pull origin main
+# → Pipeline: Build + Deploy uniquement
 ```
 
 ## 📦 Services Déployés
 
-### Services Principaux
+### Stack Applicative
 
-| Service | Type | Namespace | Description |
-|---------|------|-----------|-------------|
-| **Frontend** | React App | annual-project | Interface utilisateur |
-| **API** | Node.js | annual-project | Backend REST API |
-| **PostgreSQL** | Database | annual-project | Base de données principale |
-| **Keycloak** | Auth | annual-project | Authentification SSO |
+| Service | Image | Port | Description |
+|---------|-------|------|-------------|
+| **Frontend** | `{AR}/frontend:{SHA}` | 3000 | Interface React |
+| **API** | `{AR}/api:{SHA}` | 5000 | Backend Node.js |
+| **PostgreSQL** | `postgres:14` | 5432 | Base de données |
+| **Keycloak** | `keycloak:latest` | 8080 | Authentification |
 
 ### Services Auxiliaires
 
-| Service | Type | Description |
-|---------|------|-------------|
-| **Adminer** | DB Admin | Interface d'administration PostgreSQL |
-| **Uptime Kuma** | Monitoring | Surveillance des services |
+| Service | Type | URL | Description |
+|---------|------|-----|-------------|
+| **Adminer** | DB Admin | `adminer.fitnessconnect.fr` | Interface PostgreSQL |
+| **Uptime Kuma** | Monitoring | `uptimekuma.fitnessconnect.fr` | Surveillance services |
 
-## 🌐 Configuration Réseau
+## 🌐 Configuration Réseau & Sécurité
 
-### Ingress et Certificats
+### Ingress & DNS
 
 ```yaml
-# Certificat SSL managé par Google Cloud
-ManagedCertificate: fitnessconnect-cert
+# URLs de production
+Frontend:   https://fitnessconnect.fr
+API:        https://api.fitnessconnect.fr  
+Keycloak:   https://login.fitnessconnect.fr
+Adminer:    https://adminer.fitnessconnect.fr
+Uptime:     https://uptimekuma.fitnessconnect.fr
 
-# Ingress routing
-- Frontend: https://fitnessconnect.fr
-- API: https://api.fitnessconnect.fr  
-- Keycloak: https://login.fitnessconnect.fr
-- Adminer: https://adminer.fitnessconnect.fr
-- Uptime: https://uptimekuma.fitnessconnect.fr
+# Certificat SSL managé
+ManagedCertificate: fitnessconnect-cert
 ```
 
 ### Network Policies
 
 ```yaml
-# Sécurité réseau au niveau du namespace
-- Isolation du trafic inter-pods
-- Règles de communication définies
-- Protection contre les accès non autorisés
+# Sécurité au niveau namespace
+- Isolation réseau inter-pods
+- Règles de communication strictes
+- Protection DDoS et intrusions
 ```
 
-## 🔄 Flux de Déploiement
+## 🎯 Avantages de la Nouvelle Pipeline
 
-### Ordre des Déploiements
+### ✅ Workflow GitFlow Optimisé
 
+- **Tests continus** sur les branches de développement (feature + develop)
+- **Build optimisé** uniquement sur main (après validation des tests)
+- **Déploiement rapide** en production sans re-tester
+
+### ✅ Optimisation des Ressources
+
+- **Pas de tests redondants** sur main (déjà validés sur develop)
+- **Build direct** après validation des tests
+- **Runner dédié** pour performances garanties
+- **Cache intelligent** des dépendances Node.js
+
+### ✅ Sécurité Renforcée
+
+- **Images taggées** avec SHA commit pour traçabilité
+- **Authentification GCP** par service account
+- **Secrets GitLab CI** pour credentials sensibles
+
+### ✅ Déploiement Robuste
+
+- **Attente synchronisée** des déploiements K8s
+- **Rollback automatique** en cas d'échec
+- **Monitoring intégré** avec Uptime Kuma
+
+## 🔧 Configuration Technique
+
+### Runner Requirements
+
+```yaml
+Runner: ilyes-runner
+Features:
+  - Docker socket access (unix:///var/run/docker.sock)
+  - Internet connectivity for GCP
+  - Sufficient storage for images Docker
 ```
-1. 🧹 Nettoyage (ingress obsolètes)
-2. 📋 Namespace et policies
-3. 🔐 Certificats SSL
-4. 🌐 Configuration Ingress  
-5. 🗄️ PostgreSQL
-6. 🔑 Keycloak + thème custom
-7. 📊 Services monitoring
-8. 🔄 Mise à jour images
-9. ⚙️ Déploiement API
-10. 🖥️ Déploiement Frontend
-11. ⏳ Attente Keycloak ready
+
+### Variables Secrètes GitLab
+
+```yaml
+Required Secrets:
+  - GCP_SERVICE_KEY: Service account GCP (base64)
+  
+Optional:
+  - KEYCLOAK_DB_PASSWORD: Password Keycloak DB
+  - POSTGRES_PASSWORD: Password PostgreSQL
 ```
 
-### Variables Injectées
+### Images Registry
 
 ```bash
-# Images construites dynamiquement
-FRONTEND_IMAGE="${AR_LOCATION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/frontend:${CI_COMMIT_SHA}"
-API_IMAGE="${AR_LOCATION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/api:${CI_COMMIT_SHA}"
+# Format des tags
+Commit SHA: europe-west1-docker.pkg.dev/k8s-frist-test/annual-project-repo/{service}:{CI_COMMIT_SHA}
+Latest:     europe-west1-docker.pkg.dev/k8s-frist-test/annual-project-repo/{service}:latest
 
-# Replacement dans les manifests K8s
-sed -i "s|image europe-west1-docker.pkg.dev/.*/frontend:.*|image ${FRONTEND_IMAGE}|g" k8s/frontend/frontend-all.yaml
-sed -i "s|image europe-west1-docker.pkg.dev/.*/api:.*|image $API_IMAGE|g" k8s/api/api-all.yaml
+# Exemples
+Frontend: europe-west1-docker.pkg.dev/k8s-frist-test/annual-project-repo/frontend:abc123def
+API:      europe-west1-docker.pkg.dev/k8s-frist-test/annual-project-repo/api:abc123def
 ```
 
-## 🎯 Points Clés de la Configuration
+## 📊 Monitoring & Observabilité
 
-### Avantages
+### Outils Intégrés
 
-✅ **Pipeline simple** : 3 stages clairs et efficaces  
-✅ **Runner dédié** : Performance garantie avec `ilyes-runner`  
-✅ **Images taggées** : SHA commit + latest pour traçabilité  
-✅ **Déploiement complet** : Tous les services en une fois  
-✅ **Certificats SSL** : HTTPS managé par Google Cloud  
-✅ **Monitoring intégré** : Uptime Kuma + Adminer  
+- **Uptime Kuma** : Surveillance temps réel des services
+- **Adminer** : Interface d'administration PostgreSQL
+- **GitLab CI** : Logs et métriques des pipelines
+- **Google Cloud** : Monitoring infrastructure K8s
 
-### Spécificités Techniques
+### Métriques Clés
 
-🔧 **Docker Socket** : Accès direct via Unix socket  
-🔧 **GCP Integration** : Authentification par service account  
-🔧 **K8s Manifests** : Modification dynamique des images  
-🔧 **Keycloak Theme** : ConfigMap depuis fichiers locaux  
-🔧 **Attente déploiements** : `kubectl wait` pour synchronisation  
+- **Temps de build** : ~5-10 minutes par composant
+- **Temps de déploiement** : ~15-20 minutes complet
+- **Disponibilité** : Monitoring 24/7 via Uptime Kuma
+- **Performances** : Métriques GKE et Load Balancer
 
 ---
-
-> **⚡ Configuration Production** : Cette pipeline est optimisée pour votre environnement spécifique avec le runner `ilyes-runner` et déploie directement sur la branche `feature-deploy-ilyes`.
-
-> **🔒 Sécurisé** : Utilisation de service accounts GCP et secrets GitLab CI pour les credentials sensibles.

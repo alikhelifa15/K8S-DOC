@@ -150,7 +150,7 @@ SERVICES EXPOSÉS
 | **API REST** | [api.fitnessconnect.fr](https://api.fitnessconnect.fr) | Endpoints backend |
 | **Authentification** | [login.fitnessconnect.fr](https://login.fitnessconnect.fr) | Portail Keycloak SSO |
 | **Administration DB** | [adminer.fitnessconnect.fr](https://adminer.fitnessconnect.fr) | Interface PostgreSQL |
-| **Monitoring** | [uptimekuma.fitnessconnect.fr](http://34.79.238.35:3001/dashboard) | Surveillance système |
+| **Monitoring** | [uptimekuma.fitnessconnect.fr](http://35.205.231.241:3001/dashboard/) | Surveillance système |
 
 ## 🧪 Tests Implémentés
 
@@ -158,19 +158,14 @@ SERVICES EXPOSÉS
 - **Tests Unitaires** : Jest + React Testing Library
 - **Tests Composants** : Vérification des rendus et interactions
 - **Tests E2E** : Cypress pour parcours utilisateur complets
-- **Tests Accessibilité** : Validation WCAG
 
 ### Tests Backend (NestJS)
 - **Tests Unitaires** : Jest avec couverture > 80%
 - **Tests Intégration** : Base de données PostgreSQL de test
-- **Tests API** : Validation des endpoints REST
-- **Tests Sécurité** : Vérification JWT et authentification
 
 ### Qualité Code
 - **TypeScript Strict** : Typage fort sur frontend et backend
 - **ESLint + Prettier** : Standards de code cohérents
-- **SonarQube** : Analyse qualité continue
-- **Tests Coverage** : Couverture minimale 80%
 
 ## 🚀 Déploiement & CI/CD
 
@@ -182,7 +177,6 @@ Stages Automatisés:
 │ 1. BUILD    │ Docker Images         │
 │ 2. TEST     │ Unit + Integration    │
 │ 3. DEPLOY   │ GKE Production        │
-│ 4. VERIFY   │ Health Checks         │
 └─────────────────────────────────────┘
 ```
 
@@ -199,8 +193,6 @@ Stages Automatisés:
 ### Haute Disponibilité
 - **Uptime** : 99.9% (8 jours de production stable)
 - **Load Balancing** : Distribution automatique du trafic
-- **Auto-Recovery** : Redémarrage automatique des pods défaillants
-- **Zero-Downtime** : Déploiements sans interruption
 
 ### Sécurité
 - **HTTPS Everywhere** : Chiffrement TLS sur tous les services
@@ -209,7 +201,3 @@ Stages Automatisés:
 - **Authentication** : SSO Keycloak avec sécurité renforcée
 
 ---
-
-> **🏆 Projet Académique** : Cette plateforme démontre la maîtrise d'une stack technique moderne avec déploiement Kubernetes production-ready.
-
-> **💡 Architecture Cloud-Native** : Microservices, conteneurisation, orchestration et monitoring selon les meilleures pratiques DevOps.

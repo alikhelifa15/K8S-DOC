@@ -83,44 +83,6 @@
         }
        
       ]
-    },
-   
-    
-    
-    {
-      "group": "📚 Références & Guides",
-      "pages": [
-        {
-          "title": "Best Practices",
-          "href": "/best-practices",
-          "icon": "star",
-          "description": "Bonnes pratiques DevOps et Kubernetes"
-        },
-        {
-          "title": "API Reference",
-          "href": "/api-reference",
-          "icon": "book",
-          "description": "Documentation des endpoints"
-        },
-        {
-          "title": "Glossaire",
-          "href": "/glossary",
-          "icon": "book-open",
-          "description": "Définitions et termes techniques"
-        },
-        {
-          "title": "Changelog",
-          "href": "/changelog",
-          "icon": "clock",
-          "description": "Historique des versions"
-        },
-        {
-          "title": "Ressources Externes",
-          "href": "/resources",
-          "icon": "external-link",
-          "description": "Liens utiles et documentation"
-        }
-      ]
     }
   ],
   "search": {
