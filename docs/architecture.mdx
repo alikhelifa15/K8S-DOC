@@ -74,19 +74,16 @@ Architecture complète de la plateforme FitConnect déployée sur Google Kuberne
 ## 🔁 Ingress Controller GKE
 Nous utilisons Ingress GCE (Google Cloud Load Balancer) comme point d'entrée unique vers les services de la plateforme. Ce composant route les requêtes vers les services exposés, selon le nom de domaine et le port.
 
-## Hôtes configurés :
+## 🌐 Hôtes configurés
 
-Domaine	                           Service routé	          Port
-____________________________________________________________________
-fitnessconnect.fr	                 frontend-service	         80
-____________________________________________________________________
-api.fitnessconnect.fr	             api-service	            3000
-____________________________________________________________________
-login.fitnessconnect.fr	           keycloak-service	        8080
-____________________________________________________________________
-adminer.fitnessconnect.fr	         adminer-service	        8080
-____________________________________________________________________
-uptimekuma.fitnessconnect.fr	     uptime-kuma-service	    3001
+| Domaine                      | Service routé         | Port |
+|-----------------------------|------------------------|------|
+| `fitnessconnect.fr`         | `frontend-service`     | 80   |
+| `api.fitnessconnect.fr`     | `api-service`          | 3000 |
+| `login.fitnessconnect.fr`   | `keycloak-service`     | 8080 |
+| `adminer.fitnessconnect.fr` | `adminer-service`      | 8080 |
+| `uptimekuma.fitnessconnect.fr` | `uptime-kuma-service` | 3001 |
+
 
 
 L'accès via HTTP est désactivé (kubernetes.io/ingress.allow-http: "false") pour forcer le HTTPS sur tous les endpoints.
@@ -114,15 +111,12 @@ Des Network Policies Kubernetes ont été mises en place pour restreindre les fl
 
 ## 🔄 Règles Implémentées
 
-Pod cible	         Accès autorisé                depuis	Port(s)
-____________________________________________________________________
-postgres	       api, keycloak, adminer	             5432
-____________________________________________________________________
-api	             frontend,uptime-kuma	               3000
-____________________________________________________________________
-keycloak	           frontend, api	                 8080
-____________________________________________________________________
-frontend	     Ouvert à tous (accès Ingress GCE)	    80
+| Pod cible   | Accès autorisé depuis                 | Port(s) |
+|-------------|----------------------------------------|---------|
+| `postgres`  | `api`, `keycloak`, `adminer`           | 5432    |
+| `api`       | `frontend`, `uptime-kuma`              | 3000    |
+| `keycloak`  | `frontend`, `api`                      | 8080    |
+| `frontend`  | Ouvert à tous (accès Ingress GCE)      | 80      |
 
 
 ### ✅ Résumé Sécurité
@@ -277,21 +271,17 @@ Keycloak est une solution open-source de gestion des identités et des accès (I
 
 Dans notre projet FitConnect, Keycloak joue un rôle essentiel dans l’authentification SSO (Single Sign-On) des utilisateurs, qu’ils soient coach ou client.
 
-## 🔧 Rôles et responsabilités de Keycloak :
+## 🔧 Rôles et responsabilités de Keycloak
 
-Fonction	                 Description
-________________________________________________________________________________________________________
-SSO OAuth2 / OpenID        Connect	Un seul login pour accéder à toutes les applications (API, frontend)
-________________________________________________________________________________________________________
-Intégration Login Google	 Connexion rapide via compte Google
-________________________________________________________________________________________________________
-Gestion des utilisateurs	 Interface d’administration web pour gérer utilisateurs, groupes, rôles
-________________________________________________________________________________________________________
-Attribution de rôles	     Rôles client, coach, admin utilisés côté API pour restreindre l’accès
-________________________________________________________________________________________________________
-Vérification des tokens	   Chaque requête backend sécurisée par des tokens émis par Keycloak
-________________________________________________________________________________________________________
-Sécurité centralisée	     Plus besoin de gérer mots de passe dans nos microservices
+| Fonction                    | Description                                                                 |
+|----------------------------|-----------------------------------------------------------------------------|
+| **SSO OAuth2 / OpenID Connect** | Un seul login pour accéder à toutes les applications (API, frontend)         |
+| **Intégration Login Google**    | Connexion rapide via compte Google                                        |
+| **Gestion des utilisateurs**    | Interface d’administration web pour gérer utilisateurs, groupes, rôles     |
+| **Attribution de rôles**        | Rôles `client`, `coach`, `admin` utilisés côté API pour restreindre l’accès |
+| **Vérification des tokens**     | Chaque requête backend sécurisée par des tokens émis par Keycloak          |
+| **Sécurité centralisée**        | Plus besoin de gérer mots de passe dans nos microservices                 |
+
 
 
 
