@@ -21,7 +21,7 @@ Dans un monde où la santé et le bien-être sont devenus des priorités, les in
 - ✅ Création de compte Coach et Client
 - ✅ Validation de mot de passe avec critères de sécurité
 - ✅ Envoi de mail de confirmation automatique
-- ✅ Connexion SSO via Keycloak
+- ✅ Connexion SSO via Keycloak (Google)
 - ✅ Profils utilisateurs personnalisés
 
 ### 💪 Gestion des Entraînements
@@ -81,6 +81,7 @@ Cluster GKE (k8s-frist-test)
 ├── Adminer (1 replica) → adminer.fitnessconnect.fr
 └── Uptime Kuma (1 replica) → uptimekuma.fitnessconnect.fr
 ```
+
 
 ## 🌐 Accès aux Services
 

@@ -70,17 +70,64 @@ Architecture complète de la plateforme FitConnect déployée sur Google Kuberne
 | **Uptime Kuma** | Uptime Kuma | 1 | Monitoring |
 
 
-### Configuration Réseau
+### 🌐 Ingress, HTTPS & Sécurité Réseau
+## 🔁 Ingress Controller GKE
+Nous utilisons Ingress GCE (Google Cloud Load Balancer) comme point d'entrée unique vers les services de la plateforme. Ce composant route les requêtes vers les services exposés, selon le nom de domaine et le port.
 
-| Composant | Type | IP/Port | Accès |
-|-----------|------|---------|-------|
-| **Ingress** | GCE LoadBalancer | Public | HTTPS 443 |
-| **Frontend** | LoadBalancer | 34.38.27.13:80 | Public |
-| **API** | LoadBalancer | 34.38.105.6:3000 | Public |
-| **Keycloak** | ClusterIP | Internal:8080 | Via Ingress |
-| **PostgreSQL** | ClusterIP | Internal:5432 | Interne |
-| **Adminer** | LoadBalancer | 34.52.160.140:8080 | Public |
-| **Uptime Kuma** | LoadBalancer | 34.79.238.35:3001 | Public |
+## 🌐 Hôtes configurés
+
+| Domaine                      | Service routé         | Port |
+|-----------------------------|------------------------|------|
+| `fitnessconnect.fr`         | `frontend-service`     | 80   |
+| `api.fitnessconnect.fr`     | `api-service`          | 3000 |
+| `login.fitnessconnect.fr`   | `keycloak-service`     | 8080 |
+| `adminer.fitnessconnect.fr` | `adminer-service`      | 8080 |
+| `uptimekuma.fitnessconnect.fr` | `uptime-kuma-service` | 3001 |
+
+
+
+L'accès via HTTP est désactivé (kubernetes.io/ingress.allow-http: "false") pour forcer le HTTPS sur tous les endpoints.
+
+### 🔐 Certificats SSL Automatiques (HTTPS)
+
+Les certificats sont provisionnés automatiquement via la ressource ManagedCertificate de GKE, sans intervention manuelle. Cela permet un renouvellement automatique, une conformité HTTPS globale, et une configuration centralisée.
+
+kind: ManagedCertificate
+metadata:
+  name: fitnessconnect-cert
+spec:
+  domains:
+    - fitnessconnect.fr
+    - www.fitnessconnect.fr
+    - api.fitnessconnect.fr
+    - login.fitnessconnect.fr
+    - adminer.fitnessconnect.fr
+    - uptimekuma.fitnessconnect.fr
+
+Toutes les URLs publiques sont donc servies via HTTPS sécurisé avec des certificats Google valides.
+
+### 🛡️ Sécurité Réseau (Network Policies)
+Des Network Policies Kubernetes ont été mises en place pour restreindre les flux entre pods et services internes. Cela permet de s’assurer que chaque composant ne peut communiquer qu’avec les services autorisés.
+
+## 🔄 Règles Implémentées
+
+| Pod cible   | Accès autorisé depuis                 | Port(s) |
+|-------------|----------------------------------------|---------|
+| `postgres`  | `api`, `keycloak`, `adminer`           | 5432    |
+| `api`       | `frontend`, `uptime-kuma`              | 3000    |
+| `keycloak`  | `frontend`, `api`                      | 8080    |
+| `frontend`  | Ouvert à tous (accès Ingress GCE)      | 80      |
+
+
+### ✅ Résumé Sécurité
+
+🔒 HTTPS activé pour tous les domaines via certificats managés GKE
+
+📌 Ingress GCE centralise le routage du trafic web
+
+🧱 Network Policies assurent une isolation stricte entre composants
+
+🔁 Aucun service critique n’est exposé directement à l’extérieur
 
 ### Flux de Communication
 
@@ -218,6 +265,28 @@ spec:
         persistentVolumeClaim:
           claimName: postgres-pvc
 ```
+
+### 🛡️ Keycloak – Gestion Centralisée de l’Authentification
+Keycloak est une solution open-source de gestion des identités et des accès (IAM) conçue pour permettre une authentification centralisée, sécurisée et moderne pour les applications web et mobiles.
+
+Dans notre projet FitConnect, Keycloak joue un rôle essentiel dans l’authentification SSO (Single Sign-On) des utilisateurs, qu’ils soient coach ou client.
+
+## 🔧 Rôles et responsabilités de Keycloak
+
+| Fonction                    | Description                                                                 |
+|----------------------------|-----------------------------------------------------------------------------|
+| **SSO OAuth2 / OpenID Connect** | Un seul login pour accéder à toutes les applications (API, frontend)         |
+| **Intégration Login Google**    | Connexion rapide via compte Google                                        |
+| **Gestion des utilisateurs**    | Interface d’administration web pour gérer utilisateurs, groupes, rôles     |
+| **Attribution de rôles**        | Rôles `client`, `coach`, `admin` utilisés côté API pour restreindre l’accès |
+| **Vérification des tokens**     | Chaque requête backend sécurisée par des tokens émis par Keycloak          |
+| **Sécurité centralisée**        | Plus besoin de gérer mots de passe dans nos microservices                 |
+
+
+
+
+Grâce à Keycloak, toute la gestion de la sécurité utilisateur est externalisée et centralisée, ce qui simplifie et renforce l’architecture de notre application.
+
 
 **Persistance :**
 - PersistentVolume de 10Gi sur GKE
